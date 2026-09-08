@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Registration | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="card">
+        <h2 class="page-title">Doctor Registration</h2>
+        <p class="page-subtitle">Join HospitalCare's network of specialists</p>
+
+        <div id="alertHost"></div>
+
+        <form id="docRegForm">
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">person</span>
+                    <input type="text" name="name" id="name" placeholder="Doctor Name">
+                </div>
+                <div class="form-error" id="nameTip" style="display:none;">Doctor name is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">medical_services</span>
+                    <input type="text" name="speciality" id="speciality" placeholder="Speciality">
+                </div>
+                <div class="form-error" id="specTip" style="display:none;">Speciality is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">coronavirus</span>
+                    <select name="diseaseId" id="disease">
+                        <option value="">Select Disease</option>
+                    </select>
+                </div>
+                <div class="form-error" id="diseaseTip" style="display:none;">Please select a disease</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">email</span>
+                    <input type="email" name="email" id="email" placeholder="Email">
+                </div>
+                <div class="form-error" id="emailTip" style="display:none;">Email is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">lock</span>
+                    <input type="password" name="password" id="password" placeholder="Password">
+                </div>
+                <div class="form-error" id="passTip" style="display:none;">Password is required</div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--color-border);margin:20px 0;">
+            <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:12px;">
+                <strong>In-person visit details</strong> — shown to patients who book an
+                offline (in-person) consultation with you, so they know exactly where to go.
+            </p>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">local_hospital</span>
+                    <input type="text" name="hospitalName" id="hospitalName" placeholder="Hospital / Clinic Name">
+                </div>
+                <div class="form-error" id="hospitalNameTip" style="display:none;">Hospital / clinic name is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">location_on</span>
+                    <input type="text" name="hospitalAddress" id="hospitalAddress" placeholder="Full Address (street, area, city)">
+                </div>
+                <div class="form-error" id="hospitalAddressTip" style="display:none;">Hospital address is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">meeting_room</span>
+                    <input type="text" name="locationDetails" id="locationDetails"
+                           placeholder="Exact location (Block, Floor, Room No.) — optional">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Register Doctor</button>
+        </form>
+
+        <p class="form-footer-link">Already registered? <a href="/pages/doctor-login.html">Login</a></p>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  renderPublicNav();
+
+  (async function loadDiseases() {
+    try {
+      const diseases = await apiFetch("/api/diseases");
+      const select = document.getElementById("disease");
+      diseases.forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.diseaseName;
+        select.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("Could not load diseases", e);
+    }
+  })();
+
+  function validateExtraFields() {
+    let valid = true;
+
+    function check(id, tipId) {
+      const el = document.getElementById(id);
+      const tip = document.getElementById(tipId);
+      if (el.value.trim() === "") {
+        el.classList.add("error");
+        if (tip) tip.style.display = "block";
+        valid = false;
+      } else {
+        el.classList.remove("error");
+        if (tip) tip.style.display = "none";
+      }
+    }
+
+    check("hospitalName", "hospitalNameTip");
+    check("hospitalAddress", "hospitalAddressTip");
+
+    return valid;
+  }
+
+  document.getElementById("docRegForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!validateDoctorRegister()) return;
+    if (!validateExtraFields()) {
+      alert("Please fill in the hospital name and address so patients know where to go.");
+      return;
+    }
+
+    const alertHost = document.getElementById("alertHost");
+    alertHost.innerHTML = "";
+
+    const payload = {
+      name: document.getElementById("name").value.trim(),
+      speciality: document.getElementById("speciality").value.trim(),
+      diseaseId: Number(document.getElementById("disease").value),
+      email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value,
+      hospitalName: document.getElementById("hospitalName").value.trim(),
+      hospitalAddress: document.getElementById("hospitalAddress").value.trim(),
+      locationDetails: document.getElementById("locationDetails").value.trim(),
+    };
+
+    try {
+      await apiFetch("/api/doctor/auth/register", { method: "POST", body: JSON.stringify(payload) });
+      window.location.href = "/pages/doctor-login.html?registered=1";
+    } catch (err) {
+      alertHost.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  });
+</script>
+</body>
+</html>

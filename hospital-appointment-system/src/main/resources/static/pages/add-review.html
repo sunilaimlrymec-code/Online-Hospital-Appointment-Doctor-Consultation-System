@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultation Review | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="card" id="formCard">
+        <h2 class="page-title">Consultation Review</h2>
+        <div id="alertHost"></div>
+
+        <form id="reviewForm">
+            <div class="form-field">
+                <label>Patient</label>
+                <input id="patientName" readonly>
+            </div>
+            <div class="form-field">
+                <label>Age</label>
+                <input id="patientAge" readonly>
+            </div>
+            <div class="form-field">
+                <label>Disease</label>
+                <input id="diseaseName" readonly>
+            </div>
+            <div class="form-field">
+                <label>Date &amp; Time</label>
+                <input id="apptDateTime" readonly>
+            </div>
+            <div class="form-field">
+                <label>Consultation Type</label>
+                <input id="consultationMode" readonly>
+            </div>
+
+            <div class="form-field">
+                <label for="status">Consultation Status</label>
+                <select id="status" required>
+                    <option value="">Select Status</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Follow-up Required">Follow-up Required</option>
+                    <option value="Referred">Referred to Specialist</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="medicines">Prescription (medicines, comma separated)</label>
+                <textarea id="medicines" rows="3"></textarea>
+            </div>
+
+            <div class="form-field">
+                <label for="suggestions">Suggestions / Notes</label>
+                <textarea id="suggestions" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Submit Review</button>
+        </form>
+    </div>
+
+    <div class="card text-center" id="successCard" style="display:none;">
+        <span class="material-icons" style="font-size:48px;color:var(--color-success);">check_circle</span>
+        <h3>Review Submitted</h3>
+        <p>The consultation report has been saved and is now visible to the patient.</p>
+    </div>
+
+    <div class="text-center mt-24">
+        <a href="/pages/doctor-dashboard.html" class="btn btn-outline">Back to Dashboard</a>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const appointmentId = params.get("appointmentId");
+
+  function formatDateTime(dateStr, timeStr) {
+    const d = new Date(dateStr + "T" + timeStr);
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) +
+      " at " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  (async function init() {
+    const session = await requireSession("doctor");
+    if (!session) return;
+
+    if (!appointmentId) {
+      document.getElementById("alertHost").innerHTML =
+        '<div class="alert alert-error">No appointment specified.</div>';
+      return;
+    }
+
+    try {
+      const status = await apiFetch(`/api/reviews/${appointmentId}/status`);
+      if (status.submitted) {
+        showSuccess();
+        return;
+      }
+    } catch (e) {
+      // no report yet — fall through to load the appointment via the appointments list
+    }
+
+    try {
+      const doctorAppointments = await apiFetch("/api/doctor/appointments");
+      const appointment = doctorAppointments.appointments.find((a) => String(a.id) === String(appointmentId));
+
+      if (!appointment) {
+        document.getElementById("alertHost").innerHTML =
+          '<div class="alert alert-error">Appointment not found.</div>';
+        return;
+      }
+
+      document.getElementById("patientName").value = appointment.userName;
+      document.getElementById("patientAge").value = appointment.age;
+      document.getElementById("diseaseName").value = appointment.diseaseName;
+      document.getElementById("apptDateTime").value =
+        formatDateTime(appointment.appointmentDate, appointment.appointmentTime);
+      document.getElementById("consultationMode").value =
+        appointment.consultationMode === "ONLINE" ? "Online Video Call" : "In-Person at Hospital";
+    } catch (err) {
+      document.getElementById("alertHost").innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  })();
+
+  function showSuccess() {
+    document.getElementById("formCard").style.display = "none";
+    document.getElementById("successCard").style.display = "block";
+  }
+
+  document.getElementById("reviewForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const alertHost = document.getElementById("alertHost");
+    alertHost.innerHTML = "";
+
+    const payload = {
+      appointmentId: Number(appointmentId),
+      status: document.getElementById("status").value,
+      medicines: document.getElementById("medicines").value,
+      suggestions: document.getElementById("suggestions").value,
+    };
+
+    if (!payload.status) {
+      alertHost.innerHTML = '<div class="alert alert-error">Please select a consultation status.</div>';
+      return;
+    }
+
+    try {
+      await apiFetch("/api/reviews", { method: "POST", body: JSON.stringify(payload) });
+      showSuccess();
+    } catch (err) {
+      alertHost.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  });
+</script>
+</body>
+</html>

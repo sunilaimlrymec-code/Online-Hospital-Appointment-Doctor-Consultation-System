@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Login | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="card">
+        <h2 class="page-title">Patient Login</h2>
+        <p class="page-subtitle">Sign in to manage your appointments</p>
+
+        <div id="alertHost"></div>
+
+        <form id="loginForm">
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">email</span>
+                    <input type="email" id="email" name="email" placeholder="Email" required>
+                </div>
+                <div class="form-error" id="emailTip" style="display:none;">Email is required</div>
+            </div>
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">lock</span>
+                    <input type="password" id="password" name="password" placeholder="Password" required>
+                </div>
+                <div class="form-error" id="passTip" style="display:none;">Password is required</div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+
+        <p class="form-footer-link">Don't have an account? <a href="/pages/register.html">Register</a></p>
+        <p class="form-footer-link">Are you a doctor? <a href="/pages/doctor-login.html">Doctor login</a></p>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  renderPublicNav();
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("registered") === "1") {
+    document.getElementById("alertHost").innerHTML =
+      '<div class="alert alert-success">Registration successful. Please log in.</div>';
+  }
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!validateLogin()) return;
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const alertHost = document.getElementById("alertHost");
+    alertHost.innerHTML = "";
+
+    try {
+      await apiFetch("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      window.location.href = "/pages/dashboard.html";
+    } catch (err) {
+      let message = "Invalid email or password.";
+      if (err.status === 404) {
+        message = "No account found for that email. <a href='/pages/register.html' style='font-weight:700;'>Create one now</a>.";
+      }
+      alertHost.innerHTML = `<div class="alert alert-error">${message}</div>`;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Consultation | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        #jitsiContainer {
+            width: 100%;
+            height: 640px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            background: #000;
+        }
+        @media (max-width: 700px) {
+            #jitsiContainer { height: 480px; }
+        }
+    </style>
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main">
+    <h2 class="page-title" id="pageHeading">Video Consultation</h2>
+
+    <div id="statusCard" class="card telemedicine-panel" style="display:none;">
+        <span class="material-icons" id="statusIcon" style="font-size:56px;color:var(--color-primary);">videocam</span>
+        <h2 id="statusTitle">Loading...</h2>
+        <p id="statusMessage" style="color:var(--color-text-muted);"></p>
+        <a id="backLink" href="/pages/view-appointments.html" class="btn btn-outline mt-24">Back to My Appointments</a>
+    </div>
+
+    <div id="jitsiContainer" style="display:none;"></div>
+</main>
+
+<script src="https://meet.jit.si/external_api.js"></script>
+<script src="/js/common.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const appointmentId = params.get("appointmentId");
+
+  function showStatus(icon, title, message, showBackOnly) {
+    document.getElementById("statusCard").style.display = "block";
+    document.getElementById("jitsiContainer").style.display = "none";
+    document.getElementById("statusIcon").textContent = icon;
+    document.getElementById("statusTitle").textContent = title;
+    document.getElementById("statusMessage").textContent = message;
+  }
+
+  (async function init() {
+    if (!appointmentId) {
+      await renderPublicNav();
+      showStatus("error_outline", "No Appointment Specified", "Open this page from one of your appointment cards.");
+      return;
+    }
+
+    // Figure out whether the current session is a patient or a doctor,
+    // and fetch that person's own appointment list (this also enforces
+    // ownership — you can only start a call for an appointment that is
+    // actually yours, since it must appear in your own list).
+    let role = null;
+    let displayName = "";
+    let appointment = null;
+
+    try {
+      const user = await apiFetch("/api/auth/me");
+      role = "patient";
+      displayName = user.name;
+      renderNav("patient");
+      const appointments = await apiFetch("/api/appointments");
+      appointment = appointments.find((a) => String(a.id) === String(appointmentId));
+    } catch (e) {
+      // not a patient session
+    }
+
+    if (!appointment) {
+      try {
+        const doctor = await apiFetch("/api/doctor/auth/me");
+        role = "doctor";
+        displayName = "Dr. " + doctor.name;
+        renderNav("doctor");
+        const data = await apiFetch("/api/doctor/appointments");
+        appointment = data.appointments.find((a) => String(a.id) === String(appointmentId));
+        document.getElementById("backLink").href = "/pages/doctor-dashboard.html";
+      } catch (e) {
+        // not a doctor session either
+      }
+    }
+
+    if (!role) {
+      window.location.href = "/pages/login.html";
+      return;
+    }
+
+    if (!appointment) {
+      showStatus("block", "Appointment Not Found", "This appointment doesn't exist or doesn't belong to your account.");
+      return;
+    }
+
+    if (appointment.consultationMode !== "ONLINE") {
+      showStatus("local_hospital", "In-Person Appointment", "This appointment was booked as an in-person visit at the hospital, so no video call is available for it.");
+      return;
+    }
+
+    const startTime = new Date(appointment.appointmentDate + "T" + appointment.appointmentTime).getTime();
+    const endTime = startTime + 60 * 60 * 1000; // slots run 1 hour
+    const now = Date.now();
+
+    if (now < startTime) {
+      const minutesAway = Math.ceil((startTime - now) / 60000);
+      showStatus("schedule", "Call Not Open Yet", `This video call unlocks at your scheduled time (in about ${minutesAway} minute(s)). Please check back then.`);
+      return;
+    }
+
+    if (now > endTime) {
+      showStatus("event_busy", "Call Window Has Closed", "This appointment's one-hour video call window has ended.");
+      return;
+    }
+
+    // Within the valid window — launch the Jitsi Meet room.
+    document.getElementById("statusCard").style.display = "none";
+    const container = document.getElementById("jitsiContainer");
+    container.style.display = "block";
+
+    const roomName = "HospitalCareAppt" + appointment.id;
+
+    new JitsiMeetExternalAPI("meet.jit.si", {
+      roomName: roomName,
+      parentNode: container,
+      width: "100%",
+      height: "100%",
+      userInfo: { displayName: displayName },
+      configOverwrite: { prejoinPageEnabled: false },
+    });
+  })();
+</script>
+</body>
+</html>

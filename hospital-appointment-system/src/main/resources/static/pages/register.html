@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Registration | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="card">
+        <h2 class="page-title">Patient Registration</h2>
+        <p class="page-subtitle">Create your account to start booking appointments</p>
+
+        <div id="alertHost"></div>
+
+        <form id="regForm">
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">person</span>
+                    <input type="text" id="name" name="name" placeholder="Enter your Full Name">
+                </div>
+                <div class="form-error" id="nameTip" style="display:none;">Name is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">email</span>
+                    <input type="email" id="email" name="email" placeholder="Enter your Email">
+                </div>
+                <div class="form-error" id="emailTip" style="display:none;">Email is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">lock</span>
+                    <input type="password" id="password" name="password" placeholder="Create Password">
+                </div>
+                <div class="form-error" id="passTip" style="display:none;">Password is required</div>
+            </div>
+
+            <div class="form-field">
+                <div class="field-icon-wrap">
+                    <span class="material-icons">phone</span>
+                    <input type="text" id="mobile" name="mobile" placeholder="Enter Your Mobile Number">
+                </div>
+                <div class="form-error" id="mobileTip" style="display:none;">Mobile number is required</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </form>
+
+        <p class="form-footer-link">Already have an account? <a href="/pages/login.html">Login</a></p>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  renderPublicNav();
+
+  document.getElementById("regForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!validateForm("regForm")) return;
+
+    const alertHost = document.getElementById("alertHost");
+    alertHost.innerHTML = "";
+
+    const payload = {
+      name: document.getElementById("name").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value,
+      mobile: document.getElementById("mobile").value.trim(),
+    };
+
+    try {
+      await apiFetch("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+      window.location.href = "/pages/login.html?registered=1";
+    } catch (err) {
+      alertHost.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  });
+</script>
+</body>
+</html>

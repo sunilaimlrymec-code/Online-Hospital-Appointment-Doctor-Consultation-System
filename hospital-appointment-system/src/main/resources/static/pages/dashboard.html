@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="card text-center">
+        <h2 id="welcomeHeading">Welcome</h2>
+        <p style="color:var(--color-text-muted)">Your digital healthcare dashboard</p>
+
+        <a href="/pages/book-appointment.html" class="btn btn-primary btn-block mt-24">
+            <span class="material-icons">event_available</span> Book Appointment
+        </a>
+        <a href="/pages/view-appointments.html" class="btn btn-outline btn-block mt-24">
+            <span class="material-icons">list_alt</span> View Appointments
+        </a>
+        <a href="/pages/telemedicine.html" class="btn btn-outline btn-block mt-24">
+            <span class="material-icons">videocam</span> Telemedicine
+        </a>
+    </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  (async function init() {
+    const session = await requireSession("patient");
+    if (!session) return;
+    document.getElementById("welcomeHeading").textContent = "Welcome, " + session.name;
+  })();
+</script>
+</body>
+</html>

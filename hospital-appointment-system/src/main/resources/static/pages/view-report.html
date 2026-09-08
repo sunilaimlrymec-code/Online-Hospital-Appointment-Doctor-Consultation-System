@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultation Report | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        @media print {
+            .top-nav, .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main app-main--narrow">
+    <div class="receipt" id="receipt" style="display:none;">
+
+        <div class="report-header">
+            <img src="/images/healthcare.jpg" alt="Hospital Logo">
+            <div>
+                <h1 style="margin-bottom:2px;">Hospital System</h1>
+                <p style="margin:0;color:var(--color-text-muted);">Multi-Speciality Healthcare Center</p>
+                <p style="margin:0;color:var(--color-text-muted);">Contact: +91 98765 43210</p>
+            </div>
+        </div>
+
+        <h2>Medical Consultation Report</h2>
+
+        <dl>
+            <dt>Doctor</dt>
+            <dd id="doctorName"></dd>
+
+            <dt>Patient</dt>
+            <dd id="patientLine"></dd>
+
+            <dt>Disease</dt>
+            <dd id="diseaseName"></dd>
+
+            <dt>Appointment</dt>
+            <dd id="apptDateTime"></dd>
+
+            <dt>Consultation Type</dt>
+            <dd id="consultationMode"></dd>
+        </dl>
+
+        <hr>
+
+        <dl>
+            <dt>Status</dt>
+            <dd id="status"></dd>
+
+            <dt>Prescription</dt>
+            <dd id="medicines"></dd>
+
+            <dt>Suggestions</dt>
+            <dd id="suggestions"></dd>
+        </dl>
+
+        <div class="text-center mt-24 no-print">
+            <button class="btn btn-primary" onclick="window.print()">Download PDF</button>
+        </div>
+    </div>
+
+    <div id="alertHost"></div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  function formatDateTime(dateStr, timeStr) {
+    const d = new Date(dateStr + "T" + timeStr);
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) +
+      " at " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  (async function init() {
+    // Shared by both patients and doctors — render the nav for whichever session is active.
+    await renderPublicNav();
+
+    const params = new URLSearchParams(window.location.search);
+    const appointmentId = params.get("appointmentId");
+
+    if (!appointmentId) {
+      document.getElementById("alertHost").innerHTML =
+        '<div class="alert alert-error">No appointment specified.</div>';
+      return;
+    }
+
+    try {
+      const report = await apiFetch(`/api/reviews/${appointmentId}`);
+
+      document.getElementById("doctorName").textContent = "Dr. " + report.doctorName;
+      document.getElementById("patientLine").textContent = report.patientName + " (Age: " + report.age + ")";
+      document.getElementById("diseaseName").textContent = report.diseaseName;
+      document.getElementById("apptDateTime").textContent =
+        formatDateTime(report.appointmentDate, report.appointmentTime);
+      document.getElementById("consultationMode").textContent =
+        report.consultationMode === "ONLINE" ? "Online Video Call" : "In-Person at Hospital";
+      document.getElementById("status").textContent = report.status || "-";
+      document.getElementById("medicines").textContent = report.medicines || "-";
+      document.getElementById("suggestions").textContent = report.suggestions || "-";
+
+      document.getElementById("receipt").style.display = "block";
+    } catch (err) {
+      document.getElementById("alertHost").innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  })();
+</script>
+</body>
+</html>

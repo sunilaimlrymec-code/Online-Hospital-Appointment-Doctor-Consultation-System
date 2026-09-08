@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard | HospitalCare</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="app-shell">
+
+<div id="navHost"></div>
+
+<main class="app-main">
+    <h2 class="page-title" id="pageHeading">Patient Appointments</h2>
+    <p class="page-subtitle" id="countSubtitle"></p>
+
+    <div id="emptyState" class="empty-state" style="display:none;">
+        <p><strong>No appointments scheduled yet.</strong></p>
+    </div>
+
+    <div class="appointment-grid" id="appointmentGrid"></div>
+</main>
+
+<script src="/js/common.js"></script>
+<script src="/js/app.js"></script>
+<script>
+  function formatDateTime(dateStr, timeStr) {
+    const d = new Date(dateStr + "T" + timeStr);
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) +
+      " at " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function renderCard(a) {
+    const card = document.createElement("article");
+    card.className = "appointment-card";
+    card.dataset.datetime = a.appointmentDate + "T" + a.appointmentTime;
+    card.dataset.mode = a.consultationMode;
+
+    const modeLabel = a.consultationMode === "ONLINE"
+      ? `<span class="status live" style="background:#e6f0ff;color:#1450b8;">Online Video Call</span>`
+      : `<span class="status completed">In-Person at Hospital</span>`;
+
+    const videoButtonHtml = a.consultationMode === "ONLINE"
+      ? `<button class="btn btn-outline video-btn" disabled onclick="location.href='/pages/telemedicine.html?appointmentId=${a.id}'">
+           Video Call Locked
+         </button>`
+      : "";
+
+    card.innerHTML = `
+      <h3>Patient: ${a.userName}</h3>
+      <p><strong>Date &amp; Time:</strong> ${formatDateTime(a.appointmentDate, a.appointmentTime)}</p>
+      ${modeLabel}
+      <span class="status scheduled">${a.status}</span>
+      <div class="timer">Checking schedule...</div>
+      <div class="card-actions">
+        ${videoButtonHtml}
+        ${
+          a.reviewSubmitted
+            ? `<div class="review-success"><span class="material-icons">check_circle</span> Review submitted</div>`
+            : `<a class="btn btn-primary review-link" style="display:none;" href="/pages/add-review.html?appointmentId=${a.id}">Add Review</a>`
+        }
+      </div>
+    `;
+    return card;
+  }
+
+  (async function init() {
+    const session = await requireSession("doctor");
+    if (!session) return;
+
+    document.getElementById("pageHeading").textContent = "Dr. " + session.name + " — Patient Appointments";
+
+    try {
+      const data = await apiFetch("/api/doctor/appointments");
+      document.getElementById("countSubtitle").textContent = data.count + " total appointment(s) scheduled";
+
+      const grid = document.getElementById("appointmentGrid");
+      const empty = document.getElementById("emptyState");
+
+      if (!data.appointments.length) {
+        empty.style.display = "block";
+        return;
+      }
+
+      data.appointments.forEach((a) => grid.appendChild(renderCard(a)));
+      initAppointmentCards();
+    } catch (err) {
+      console.error(err);
+    }
+  })();
+</script>
+</body>
+</html>
